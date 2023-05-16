@@ -663,6 +663,7 @@ def infer_artifact_path_from_primary_and_repos(primary_url, repository_urls):
         if userless_primary_url.find(url) != -1:
             primary_artifact_path = userless_primary_url[len(url) + 1:]
             break
+    print(primary_artifact_path)
     return primary_artifact_path
 
 def _check_artifacts_are_unique(artifacts, duplicate_version_warning):
