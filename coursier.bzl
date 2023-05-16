@@ -622,11 +622,11 @@ def split_url(url):
 
 def remove_auth_from_url(url):
     """Returns url without `user:pass@` or `user@`."""
-    if "@" not in url:
+    if "@" not in url and "%40" not in url:
         return url
     protocol, url_parts = split_url(url)
     host = url_parts[0]
-    if "@" not in host or "%40" not in host:
+    if "@" not in host and "%40" not in host:
         return url
 
     if "@" in host:
