@@ -628,10 +628,10 @@ def remove_auth_from_url(url):
     host = url_parts[0]
     if "@" not in host:
         return url
+
     last_index = host.rfind("@", 0, None)
     userless_host = host[last_index + 1:]
-    new_url = "{}://{}".format(protocol, "/".join([userless_host] + url_parts[1:]))
-    return new_url
+    return "{}://{}".format(protocol, "/".join([userless_host] + url_parts[1:]))
 
 def infer_artifact_path_from_primary_and_repos(primary_url, repository_urls):
     """Returns the artifact path inferred by comparing primary_url with urls in repository_urls.
@@ -847,6 +847,23 @@ def _download_jq(repository_ctx):
     for (os, value) in JQ_VERSIONS.items():
         repository_ctx.download(value.url, "jq-%s" % os, sha256 = value.sha256, executable = True)
 
+def _cleanup_artifact_file_path(repository_ctx, artifact_path):
+    # Just as primary_url we do not want the url encoding in the path that coursier encodes
+    # - ':' as '%3A'
+    # - '@' as '%40'
+    absolute_path_parts = artifact_path.split(get_coursier_cache_or_default(
+        repository_ctx,
+        repository_ctx.attr.use_unsafe_shared_cache or repository_ctx.attr.name.startswith("unpinned_"),
+    ))
+    if len(absolute_path_parts) != 2:
+        fail("Error while trying to parse the path of file in the coursier cache: " + artifact_path)
+    else:
+        artifact_relative_path = "v1" + absolute_path_parts[1]
+        cleaned_file_path = artifact_path.replace("%3A", ":").replace("%40", "@")
+        repository_ctx.symlink(artifact_relative_path, cleaned_file_path)
+        return cleaned_file_path
+
+
 def _coursier_fetch_impl(repository_ctx):
     # Not using maven_install.json, so we resolve and fetch from scratch.
     # This takes significantly longer as it doesn't rely on any local
@@ -969,6 +986,8 @@ def _coursier_fetch_impl(repository_ctx):
 
         # Normalize paths in place here.
         artifact.update({"file": _normalize_to_unix_path(artifact["file"])})
+        if "%3A" in artifact["file"] or "%40" in artifact["file"]:
+            artifact.update({"file": _cleanup_artifact_file_path(repository_ctx, artifact["file"])})
 
         if is_maven_local_path(artifact["file"]):
             # This file comes from maven local, so handle it in two different ways depending if
