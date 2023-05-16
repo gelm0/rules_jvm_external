@@ -626,12 +626,17 @@ def remove_auth_from_url(url):
         return url
     protocol, url_parts = split_url(url)
     host = url_parts[0]
-    if "@" not in host:
+    if "@" not in host or "%40" not in host:
         return url
-    last_index = host.rfind("@", 0, None)
-    userless_host = host[last_index + 1:]
-    new_url = "{}://{}".format(protocol, "/".join([userless_host] + url_parts[1:]))
-    return new_url
+
+    if "@" in host:
+        last_index = host.rfind("@", 0, None)
+        userless_host = host[last_index + 1:]
+        return "{}://{}".format(protocol, "/".join([userless_host] + url_parts[1:]))
+    else:
+        last_index = host.rfind("%40", 0, None)
+        userless_host = host[last_index + 1:]
+        return "{}://{}".format(protocol, "/".join([userless_host] + url_parts[1:]))
 
 def infer_artifact_path_from_primary_and_repos(primary_url, repository_urls):
     """Returns the artifact path inferred by comparing primary_url with urls in repository_urls.
